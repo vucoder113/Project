@@ -1,0 +1,7 @@
+__pycache__/
+.venv/
+*.pyc
+data/uploads/
+data/profiles.json
+data/qr/
+*.zip
