@@ -96,6 +96,9 @@ def public_base_url():
     return os.getenv("PUBLIC_BASE_URL", request.host_url).rstrip("/")
 
 
+CUSTOMER_FIELDS = ["Mã KH", "Họ tên", "Công ty", "Chức vụ", "Điện thoại", "Email", "Nhân viên phụ trách", "Tình trạng"]
+
+
 @app.get("/")
 def index():
     profiles = load_profiles()
@@ -148,6 +151,33 @@ def upload():
 
     save_profiles(profiles)
     return redirect(url_for("index"))
+
+
+@app.route("/dang-ky", methods=["GET", "POST"])
+def guest_registration():
+    if request.method == "GET":
+        return render_template("guest_registration.html", fields=CUSTOMER_FIELDS)
+    fields = {field: request.form.get(field, "").strip() for field in CUSTOMER_FIELDS}
+    if not fields["Họ tên"]:
+        return render_template("guest_registration.html", fields=CUSTOMER_FIELDS, error="Vui lòng nhập Họ tên."), 400
+    customer_id = uuid.uuid4().hex[:12]
+    name = fields["Họ tên"]
+    qr_filename = f"guest_{safe_filename(name)}_{customer_id}.png"
+    profile = {"name": name, "fields": fields, "qr_filename": qr_filename, "checkin_at": None}
+    profiles = load_profiles()
+    profiles[customer_id] = profile
+    save_profiles(profiles)
+    qr_content = f"{public_base_url()}{url_for('customer', customer_id=customer_id)}"
+    create_qr_image(qr_content, QR_DIR / qr_filename)
+    return redirect(url_for("customer", customer_id=customer_id))
+
+
+@app.get("/qr-chung")
+def common_qr():
+    qr_path = QR_DIR / "qr-chung-dang-ky.png"
+    qr_content = f"{public_base_url()}{url_for('guest_registration')}"
+    create_qr_image(qr_content, qr_path)
+    return send_from_directory(QR_DIR, qr_path.name, as_attachment=True)
 
 
 @app.get("/customer/<customer_id>")
