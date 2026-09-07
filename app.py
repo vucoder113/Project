@@ -2,6 +2,7 @@ import json
 import os
 import re
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -25,6 +26,10 @@ def load_profiles():
     if not PROFILES_FILE.exists():
         return {}
     return json.loads(PROFILES_FILE.read_text(encoding="utf-8"))
+
+
+def save_profiles(profiles):
+    PROFILES_FILE.write_text(json.dumps(profiles, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def clean_value(value):
@@ -114,12 +119,12 @@ def upload():
         else:
             qr_content = f"{public_base_url()}{url_for('customer', customer_id=customer_id)}"
         qr_filename = f"{row_number:03d}_{safe_filename(name)}_{customer_id}.png"
-        profile = {"name": name, "fields": fields, "qr_filename": qr_filename}
+        profile = {"name": name, "fields": fields, "qr_filename": qr_filename, "checkin_at": None}
         if offline_qr:
             create_qr_image(qr_content, QR_DIR / qr_filename)
         profiles[customer_id] = profile
 
-    PROFILES_FILE.write_text(json.dumps(profiles, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_profiles(profiles)
     return redirect(url_for("index"))
 
 
@@ -129,6 +134,18 @@ def customer(customer_id):
     if profile is None:
         abort(404)
     return render_template("customer.html", profile=profile)
+
+
+@app.post("/customer/<customer_id>/checkin")
+def checkin(customer_id):
+    profiles = load_profiles()
+    profile = profiles.get(customer_id)
+    if profile is None:
+        abort(404)
+    if not profile.get("checkin_at"):
+        profile["checkin_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        save_profiles(profiles)
+    return redirect(url_for("customer", customer_id=customer_id))
 
 
 @app.get("/qr/<path:filename>")
