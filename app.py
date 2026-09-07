@@ -3,12 +3,13 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
+from io import StringIO
 from pathlib import Path
 
 import pandas as pd
 import qrcode
 from qrcode.constants import ERROR_CORRECT_L
-from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, abort, make_response, redirect, render_template, request, send_from_directory, url_for
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -182,9 +183,13 @@ def common_qr():
 
 @app.get("/customer/<customer_id>")
 def customer(customer_id):
-    profile = load_profiles().get(customer_id)
+    profiles = load_profiles()
+    profile = profiles.get(customer_id)
     if profile is None:
         abort(404)
+    if not profile.get("checkin_at"):
+        profile["checkin_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        save_profiles(profiles)
     invitation = next(iter(DATA_DIR.glob("invitation.*")), None)
     return render_template("customer.html", profile=profile, invitation_exists=invitation is not None)
 
@@ -207,6 +212,21 @@ def checkin(customer_id):
         profile["checkin_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         save_profiles(profiles)
     return redirect(url_for("customer", customer_id=customer_id))
+
+
+@app.get("/export-checkin.csv")
+def export_checkin():
+    rows = []
+    for profile in load_profiles().values():
+        row = dict(profile["fields"])
+        row["Thời gian check-in"] = profile.get("checkin_at") or "Chưa check-in"
+        rows.append(row)
+    output = StringIO()
+    pd.DataFrame(rows).to_csv(output, index=False, encoding="utf-8-sig")
+    response = make_response(output.getvalue())
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    response.headers["Content-Disposition"] = "attachment; filename=du-lieu-check-in.csv"
+    return response
 
 
 @app.get("/qr/<path:filename>")
