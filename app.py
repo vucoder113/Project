@@ -15,6 +15,7 @@ DATA_DIR = BASE_DIR / "data"
 QR_DIR = DATA_DIR / "qr"
 UPLOAD_DIR = DATA_DIR / "uploads"
 PROFILES_FILE = DATA_DIR / "profiles.json"
+INVITATION_FILE = DATA_DIR / "invitation"
 for folder in (QR_DIR, UPLOAD_DIR):
     folder.mkdir(parents=True, exist_ok=True)
 
@@ -30,6 +31,18 @@ def load_profiles():
 
 def save_profiles(profiles):
     PROFILES_FILE.write_text(json.dumps(profiles, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def attendance_stats(profiles):
+    sales = {}
+    for profile in profiles.values():
+        sale = next((value for key, value in profile["fields"].items() if "nhân viên phụ trách" in key.lower()), "Chưa phân sale") or "Chưa phân sale"
+        entry = sales.setdefault(sale, {"invited": 0, "checked_in": 0})
+        entry["invited"] += 1
+        entry["checked_in"] += bool(profile.get("checkin_at"))
+    for entry in sales.values():
+        entry["rate"] = round(entry["checked_in"] * 100 / entry["invited"], 1) if entry["invited"] else 0
+    return sales
 
 
 def clean_value(value):
@@ -85,7 +98,8 @@ def public_base_url():
 
 @app.get("/")
 def index():
-    return render_template("index.html", profiles=load_profiles())
+    profiles = load_profiles()
+    return render_template("index.html", profiles=profiles, stats=attendance_stats(profiles))
 
 
 @app.post("/upload")
@@ -98,6 +112,14 @@ def upload():
         return "Chỉ hỗ trợ file .xlsx, .xls hoặc .csv.", 400
     upload_path = UPLOAD_DIR / f"customers{suffix}"
     excel_file.save(upload_path)
+    invitation_image = request.files.get("invitation_image")
+    if invitation_image and invitation_image.filename:
+        image_suffix = Path(invitation_image.filename).suffix.lower()
+        if image_suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
+            return "Ảnh thiệp phải là PNG, JPG hoặc WEBP.", 400
+        for old_image in DATA_DIR.glob("invitation.*"):
+            old_image.unlink()
+        invitation_image.save(INVITATION_FILE.with_suffix(image_suffix))
     try:
         dataframe = read_customer_file(upload_path, suffix)
     except Exception as error:
@@ -133,7 +155,16 @@ def customer(customer_id):
     profile = load_profiles().get(customer_id)
     if profile is None:
         abort(404)
-    return render_template("customer.html", profile=profile)
+    invitation = next(iter(DATA_DIR.glob("invitation.*")), None)
+    return render_template("customer.html", profile=profile, invitation_exists=invitation is not None)
+
+
+@app.get("/invitation")
+def invitation():
+    image = next(iter(DATA_DIR.glob("invitation.*")), None)
+    if image is None:
+        abort(404)
+    return send_from_directory(DATA_DIR, image.name)
 
 
 @app.post("/customer/<customer_id>/checkin")
