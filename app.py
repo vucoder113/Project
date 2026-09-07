@@ -104,7 +104,7 @@ def upload():
         qr = qrcode.QRCode(
             version=None,
             error_correction=ERROR_CORRECT_L,
-            box_size=16,
+            box_size=10,
             border=4,
         )
         qr.add_data(qr_content)
