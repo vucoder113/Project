@@ -17,6 +17,7 @@
 		.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:15px}.card{position:relative;text-align:center;padding:18px 14px;background:#fff;border:1px solid var(--line);border-radius:12px}.card img{display:block;width:156px;height:156px;object-fit:contain;margin:0 auto 13px}.card strong{display:block;overflow-wrap:anywhere}.status{display:inline-block;margin:10px 0;padding:5px 9px;border-radius:999px;background:#f1f4f4;color:var(--muted);font-size:.78rem}.status.done{background:#e6eadc;color:#4f5c36;font-weight:800}.card-links{display:flex;justify-content:center;gap:12px;font-size:.84rem;align-items:center}.card a,.exports a{color:var(--wine);font-weight:700}.delete-button{padding:0;border:0;background:none;color:#a34242;font:700 12px Arial,sans-serif;cursor:pointer}.delete-button:hover{color:#7c2020}.empty{text-align:center;padding:42px 20px;color:var(--muted)}
 		.code{margin:7px 0 0;color:var(--wine);font:700 12px Arial,sans-serif;letter-spacing:.08em}
 		.search-box{width:100%;padding:13px 15px;margin:0 0 16px;border:1px solid var(--line);border-radius:4px;background:#fffdf8;color:var(--ink);font:15px Arial,sans-serif}.search-box:focus{outline:2px solid rgba(111,36,50,.2);border-color:var(--wine)}.search-empty{display:none;padding:28px;text-align:center;color:var(--muted);font:14px Arial,sans-serif}
+		.search-controls{display:grid;grid-template-columns:1fr 220px;gap:10px;margin-bottom:16px}.status-filter{padding:13px 15px;border:1px solid var(--line);border-radius:4px;background:#fffdf8;color:var(--ink);font:15px Arial,sans-serif}
 		@media(max-width:780px){.topbar{display:block}.download{margin-top:20px}.upload{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.actions{display:block}.exports{margin-top:12px}.check{height:auto}}
 		@media(max-width:430px){.metrics{grid-template-columns:1fr}.shell{padding:24px 13px 40px}.brand-logo{width:92px;height:66px}.wine-logo{width:56px;height:66px}}
 	</style>
@@ -43,7 +44,7 @@
 				<div class="actions"><h2>Thống kê theo nhân viên phụ trách</h2><div class="exports"><a href="{{ url_for('export_new_guests') }}">Khách mới</a><a href="{{ url_for('export_existing_checkin') }}">Khách có QR đã check-in</a><a href="{{ url_for('export_checkin_xlsx') }}">Tổng Excel</a><a href="{{ url_for('export_checkin') }}">Tổng CSV</a></div></div>
 				<div class="table-wrap"><table><tr><th>Sale</th><th>Được mời</th><th>Đã đến</th><th>Tỷ lệ</th></tr>{% for sale, item in stats.items() %}<tr data-sale="{{ sale }}"><td>{{ sale }}</td><td class="sale-invited">{{ item.invited }}</td><td class="sale-checked">{{ item.checked_in }}</td><td class="sale-rate">{{ item.rate }}%</td></tr>{% endfor %}</table></div>
 			</section>
-			<section><div class="actions"><h2>Danh sách QR ({{ profiles|length }})</h2><p class="hint">Tìm theo số thứ tự, mã khách hoặc tên khách.</p></div><input id="guest-search" class="search-box" type="search" placeholder="Tìm số thứ tự, mã KH hoặc tên khách..."><div id="guest-grid" class="grid">{% for customer_id, profile in profiles.items() %}<article class="card guest-card" data-customer-id="{{ customer_id }}" data-search="{{ loop.index }} {{ profile.name }} {{ profile.fields.get('Mã KH', '') }} {{ profile.fields.get('Mã khách hàng', '') }}"><div class="code">QR số {{ "%03d"|format(loop.index) }}</div><img loading="lazy" decoding="async" src="{{ url_for('qr_image', filename=profile.qr_filename) }}" alt="QR của {{ profile.name }}"><strong>{{ profile.name }}</strong><p class="code">Mã KH: {{ profile.fields.get('Mã KH') or profile.fields.get('Mã khách hàng') or 'Chưa có' }}</p>{% if profile.get('checkin_at') %}<span class="status done">Đã check-in</span>{% else %}<span class="status">Chưa check-in</span>{% endif %}<div class="card-links"><a href="{{ url_for('admin_customer_preview', customer_id=customer_id) }}" target="_blank" rel="noopener noreferrer">Xem thông tin</a><a href="{{ url_for('qr_image', filename=profile.qr_filename) }}" download>Tải QR</a><form method="post" action="{{ url_for('delete_customer', customer_id=customer_id) }}" onsubmit="const button=this.querySelector('button');if(!confirm('Xóa khách và mã QR này?'))return false;button.disabled=true;button.textContent='Đang xóa...';"><button class="delete-button" type="submit">Xóa</button></form></div></article>{% endfor %}</div><div id="search-empty" class="search-empty">Không tìm thấy khách phù hợp.</div></section>
+			<section><div class="actions"><h2>Danh sách QR ({{ profiles|length }})</h2><p class="hint">Tìm theo số thứ tự, mã khách, tên hoặc trạng thái check-in.</p></div><div class="search-controls"><input id="guest-search" class="search-box" type="search" placeholder="Tìm số thứ tự, mã KH hoặc tên khách..."><select id="status-filter" class="status-filter"><option value="all">Tất cả trạng thái</option><option value="checked">Đã check-in</option><option value="waiting">Chưa check-in</option></select></div><div id="guest-grid" class="grid">{% for customer_id, profile in profiles.items() %}<article class="card guest-card" data-customer-id="{{ customer_id }}" data-checkin="{{ 'checked' if profile.get('checkin_at') else 'waiting' }}" data-search="{{ loop.index }} {{ profile.name }} {{ profile.fields.get('Mã KH', '') }} {{ profile.fields.get('Mã khách hàng', '') }}"><div class="code">QR số {{ "%03d"|format(loop.index) }}</div><img loading="lazy" decoding="async" src="{{ url_for('qr_image', filename=profile.qr_filename) }}" alt="QR của {{ profile.name }}"><strong>{{ profile.name }}</strong><p class="code">Mã KH: {{ profile.fields.get('Mã KH') or profile.fields.get('Mã khách hàng') or 'Chưa có' }}</p>{% if profile.get('checkin_at') %}<span class="status done">Đã check-in</span>{% else %}<span class="status">Chưa check-in</span>{% endif %}<div class="card-links"><a href="{{ url_for('admin_customer_preview', customer_id=customer_id) }}" target="_blank" rel="noopener noreferrer">Xem thông tin</a><a href="{{ url_for('qr_image', filename=profile.qr_filename) }}" download>Tải QR</a><form method="post" action="{{ url_for('delete_customer', customer_id=customer_id) }}" onsubmit="const button=this.querySelector('button');if(!confirm('Xóa khách và mã QR này?'))return false;button.disabled=true;button.textContent='Đang xóa...';"><button class="delete-button" type="submit">Xóa</button></form></div></article>{% endfor %}</div><div id="search-empty" class="search-empty">Không tìm thấy khách phù hợp.</div></section>
 		{% else %}
 			<section class="panel empty"><strong>Chưa có dữ liệu khách</strong><p>Upload file Excel để tạo danh sách QR đầu tiên.</p></section>
 		{% endif %}
@@ -52,17 +53,21 @@
 		const searchInput = document.getElementById('guest-search');
 		const guestCards = [...document.querySelectorAll('.guest-card')];
 		const emptyMessage = document.getElementById('search-empty');
+		const statusFilter = document.getElementById('status-filter');
 		const normalize = value => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
-		if (searchInput) searchInput.addEventListener('input', event => {
-			const query = normalize(event.target.value.trim());
+		function filterGuests() {
+			const query = normalize(searchInput ? searchInput.value.trim() : '');
+			const status = statusFilter ? statusFilter.value : 'all';
 			let visible = 0;
 			guestCards.forEach(card => {
-				const match = !query || normalize(card.dataset.search).includes(query);
+				const match = (!query || normalize(card.dataset.search).includes(query)) && (status === 'all' || card.dataset.checkin === status);
 				card.style.display = match ? '' : 'none';
 				visible += match;
 			});
-			if (emptyMessage) emptyMessage.style.display = visible || !query ? 'none' : 'block';
-		});
+			if (emptyMessage) emptyMessage.style.display = visible ? 'none' : 'block';
+		}
+		if (searchInput) searchInput.addEventListener('input', filterGuests);
+		if (statusFilter) statusFilter.addEventListener('change', filterGuests);
 		let knownTotal = {{ profiles|length }};
 		async function refreshCheckins() {
 			try {
@@ -84,9 +89,11 @@
 				Object.entries(data.profiles).forEach(([customerId, item]) => {
 					const card = document.querySelector(`[data-customer-id="${customerId}"]`);
 					if (!card) return;
+					card.dataset.checkin = item.checked_in ? 'checked' : 'waiting';
 					const status = card.querySelector('.status');
-					if (status && item.checked_in) { status.textContent = 'Đã check-in'; status.classList.add('done'); }
+					if (status) { status.textContent = item.checked_in ? 'Đã check-in' : 'Chưa check-in'; status.classList.toggle('done', item.checked_in); }
 				});
+				filterGuests();
 			} catch (error) { /* Keep the dashboard usable when a poll is interrupted. */ }
 		}
 		setInterval(refreshCheckins, 5000);
