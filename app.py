@@ -98,6 +98,16 @@ def profile_identity(fields):
     return None
 
 
+def next_guest_code(profiles):
+    highest_number = 0
+    for profile in profiles.values():
+        customer_code = str(profile.get("fields", {}).get("Mã KH", "")).strip().upper()
+        match = re.fullmatch(r"OL(\d+)", customer_code)
+        if match:
+            highest_number = max(highest_number, int(match.group(1)))
+    return f"OL{highest_number + 1:02d}"
+
+
 def vcard_value(value):
     return str(value).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
 
@@ -226,13 +236,20 @@ def upload():
 def guest_registration():
     if request.method == "GET":
         profiles = load_profiles()
-        fields = list(dict.fromkeys(field for profile in profiles.values() for field in profile["fields"])) or CUSTOMER_FIELDS
+        fields = [
+            field for field in (list(dict.fromkeys(field for profile in profiles.values() for field in profile["fields"])) or CUSTOMER_FIELDS)
+            if field not in {"Mã KH", "Mã khách hàng"}
+        ]
         return render_template("guest_registration.html", fields=fields)
     profiles = load_profiles()
-    form_fields = list(dict.fromkeys(field for profile in profiles.values() for field in profile["fields"])) or CUSTOMER_FIELDS
+    form_fields = [
+        field for field in (list(dict.fromkeys(field for profile in profiles.values() for field in profile["fields"])) or CUSTOMER_FIELDS)
+        if field not in {"Mã KH", "Mã khách hàng"}
+    ]
     fields = {field: request.form.get(field, "").strip() for field in form_fields}
     if not fields["Họ tên"]:
         return render_template("guest_registration.html", fields=form_fields, error="Vui lòng nhập Họ tên."), 400
+    fields["Mã KH"] = next_guest_code(profiles)
     customer_id = uuid.uuid4().hex[:12]
     name = fields["Họ tên"]
     qr_filename = f"guest_{safe_filename(name)}_{customer_id}.png"
