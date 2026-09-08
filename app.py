@@ -11,7 +11,7 @@ import qrcode
 import psycopg
 from psycopg.types.json import Jsonb
 from qrcode.constants import ERROR_CORRECT_L
-from flask import Flask, abort, make_response, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, abort, make_response, redirect, render_template, request, send_file, send_from_directory, url_for
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -130,6 +130,21 @@ def create_qr_image(content, output_path):
     qr.add_data(content)
     qr.make(fit=True)
     qr.make_image().save(output_path)
+
+
+def qr_image_stream(content):
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(content)
+    qr.make(fit=True)
+    output = BytesIO()
+    qr.make_image().save(output, format="PNG")
+    output.seek(0)
+    return output
 
 
 def read_customer_file(upload_path, suffix):
@@ -268,10 +283,14 @@ def guest_registration():
 
 @app.get("/qr-chung")
 def common_qr():
-    qr_path = QR_DIR / "qr-chung-dang-ky.png"
     qr_content = f"{public_base_url()}{url_for('guest_registration')}"
-    create_qr_image(qr_content, qr_path)
-    return send_from_directory(QR_DIR, qr_path.name, as_attachment=True)
+    return send_file(
+        qr_image_stream(qr_content),
+        mimetype="image/png",
+        as_attachment=True,
+        download_name="qr-chung-dang-ky.png",
+        max_age=0,
+    )
 
 
 @app.get("/customer/<customer_id>")
