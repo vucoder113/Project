@@ -3,7 +3,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
 
 import pandas as pd
@@ -31,7 +31,9 @@ def load_profiles():
 
 
 def save_profiles(profiles):
-    PROFILES_FILE.write_text(json.dumps(profiles, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary_file = PROFILES_FILE.with_suffix(".tmp")
+    temporary_file.write_text(json.dumps(profiles, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary_file.replace(PROFILES_FILE)
 
 
 def attendance_stats(profiles):
@@ -56,6 +58,14 @@ def clean_value(value):
 
 def safe_filename(value):
     return re.sub(r"[^\w.-]+", "_", value, flags=re.UNICODE).strip("._") or "customer"
+
+
+def profile_identity(fields):
+    for field in ("Mã KH", "Mã khách hàng", "Email", "Điện thoại", "Họ tên"):
+        value = fields.get(field, "").strip().lower()
+        if value:
+            return field, value
+    return None
 
 
 def vcard_value(value):
@@ -131,24 +141,35 @@ def upload():
     if dataframe.empty:
         return "File không có dữ liệu khách hàng.", 400
 
-    for old_qr in QR_DIR.glob("*.png"):
-        old_qr.unlink()
-
-    profiles = {}
+    profiles = load_profiles()
+    identities = {profile_identity(profile["fields"]): customer_id for customer_id, profile in profiles.items()}
+    next_number = len(profiles) + 1
     for row_number, (_, row) in enumerate(dataframe.iterrows(), start=1):
-        customer_id = uuid.uuid4().hex[:12]
         fields = {str(column).strip(): clean_value(value) for column, value in row.items()}
         name = next((value for key, value in fields.items() if "tên" in key.lower() or "name" in key.lower()), f"Khách hàng {row_number}")
+        identity = profile_identity(fields)
+        customer_id = identities.get(identity) if identity else None
+        old_profile = profiles.get(customer_id) if customer_id else None
+        if customer_id is None:
+            customer_id = uuid.uuid4().hex[:12]
+            next_number += 1
         offline_qr = bool(request.form.get("offline_qr"))
         if offline_qr:
             qr_content = make_offline_qr_content(fields, name)
         else:
             qr_content = f"{public_base_url()}{url_for('customer', customer_id=customer_id)}"
-        qr_filename = f"{row_number:03d}_{safe_filename(name)}_{customer_id}.png"
-        profile = {"name": name, "fields": fields, "qr_filename": qr_filename, "checkin_at": None}
+        qr_filename = old_profile["qr_filename"] if old_profile else f"{next_number - 1:03d}_{safe_filename(name)}_{customer_id}.png"
+        profile = {
+            "name": name,
+            "fields": fields,
+            "qr_filename": qr_filename,
+            "checkin_at": old_profile.get("checkin_at") if old_profile else None,
+        }
         if offline_qr:
             create_qr_image(qr_content, QR_DIR / qr_filename)
         profiles[customer_id] = profile
+        if identity:
+            identities[identity] = customer_id
 
     save_profiles(profiles)
     return redirect(url_for("index"))
@@ -157,15 +178,23 @@ def upload():
 @app.route("/dang-ky", methods=["GET", "POST"])
 def guest_registration():
     if request.method == "GET":
-        return render_template("guest_registration.html", fields=CUSTOMER_FIELDS)
-    fields = {field: request.form.get(field, "").strip() for field in CUSTOMER_FIELDS}
+        profiles = load_profiles()
+        fields = list(dict.fromkeys(field for profile in profiles.values() for field in profile["fields"])) or CUSTOMER_FIELDS
+        return render_template("guest_registration.html", fields=fields)
+    profiles = load_profiles()
+    form_fields = list(dict.fromkeys(field for profile in profiles.values() for field in profile["fields"])) or CUSTOMER_FIELDS
+    fields = {field: request.form.get(field, "").strip() for field in form_fields}
     if not fields["Họ tên"]:
-        return render_template("guest_registration.html", fields=CUSTOMER_FIELDS, error="Vui lòng nhập Họ tên."), 400
+        return render_template("guest_registration.html", fields=form_fields, error="Vui lòng nhập Họ tên."), 400
     customer_id = uuid.uuid4().hex[:12]
     name = fields["Họ tên"]
     qr_filename = f"guest_{safe_filename(name)}_{customer_id}.png"
-    profile = {"name": name, "fields": fields, "qr_filename": qr_filename, "checkin_at": None}
-    profiles = load_profiles()
+    profile = {
+        "name": name,
+        "fields": fields,
+        "qr_filename": qr_filename,
+        "checkin_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
     profiles[customer_id] = profile
     save_profiles(profiles)
     qr_content = f"{public_base_url()}{url_for('customer', customer_id=customer_id)}"
@@ -226,6 +255,23 @@ def export_checkin():
     response = make_response(output.getvalue())
     response.headers["Content-Type"] = "text/csv; charset=utf-8"
     response.headers["Content-Disposition"] = "attachment; filename=du-lieu-check-in.csv"
+    return response
+
+
+@app.get("/export-checkin.xlsx")
+def export_checkin_xlsx():
+    rows = []
+    for profile in load_profiles().values():
+        row = dict(profile["fields"])
+        row["Thời gian check-in"] = profile.get("checkin_at") or "Chưa check-in"
+        rows.append(row)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        pd.DataFrame(rows).to_excel(writer, index=False, sheet_name="Check-in")
+    output.seek(0)
+    response = make_response(output.getvalue())
+    response.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    response.headers["Content-Disposition"] = "attachment; filename=du-lieu-check-in.xlsx"
     return response
 
 
