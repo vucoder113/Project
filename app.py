@@ -26,9 +26,13 @@ for folder in (QR_DIR, UPLOAD_DIR):
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+_profiles_cache = None
 
 
 def load_profiles():
+    global _profiles_cache
+    if _profiles_cache is not None:
+        return _profiles_cache
     database_url = os.getenv("DATABASE_URL")
     if database_url:
         try:
@@ -37,16 +41,20 @@ def load_profiles():
                     "CREATE TABLE IF NOT EXISTS profiles_store (store_id INTEGER PRIMARY KEY, payload JSONB NOT NULL)"
                 )
                 row = connection.execute("SELECT payload FROM profiles_store WHERE store_id = 1").fetchone()
-                return row[0] if row else {}
+                _profiles_cache = row[0] if row else {}
+                return _profiles_cache
         except psycopg.Error as error:
             app.logger.exception("Could not load profiles from PostgreSQL")
             raise RuntimeError("Không thể kết nối database PostgreSQL. Kiểm tra DATABASE_URL trên Render.") from error
     if not PROFILES_FILE.exists():
-        return {}
-    return json.loads(PROFILES_FILE.read_text(encoding="utf-8"))
+        _profiles_cache = {}
+    else:
+        _profiles_cache = json.loads(PROFILES_FILE.read_text(encoding="utf-8"))
+    return _profiles_cache
 
 
 def save_profiles(profiles):
+    global _profiles_cache
     database_url = os.getenv("DATABASE_URL")
     if database_url:
         try:
@@ -59,6 +67,7 @@ def save_profiles(profiles):
                     "ON CONFLICT (store_id) DO UPDATE SET payload = EXCLUDED.payload",
                     (Jsonb(profiles),),
                 )
+            _profiles_cache = profiles
             return
         except psycopg.Error as error:
             app.logger.exception("Could not save profiles to PostgreSQL")
@@ -66,6 +75,7 @@ def save_profiles(profiles):
     temporary_file = PROFILES_FILE.with_suffix(".tmp")
     temporary_file.write_text(json.dumps(profiles, ensure_ascii=False, indent=2), encoding="utf-8")
     temporary_file.replace(PROFILES_FILE)
+    _profiles_cache = profiles
 
 
 def attendance_stats(profiles):
