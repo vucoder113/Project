@@ -37,7 +37,8 @@ def load_profiles():
                 row = connection.execute("SELECT payload FROM profiles_store WHERE store_id = 1").fetchone()
                 return row[0] if row else {}
         except psycopg.Error as error:
-            app.logger.error("Could not load profiles from PostgreSQL: %s", error)
+            app.logger.exception("Could not load profiles from PostgreSQL")
+            raise RuntimeError("Không thể kết nối database PostgreSQL. Kiểm tra DATABASE_URL trên Render.") from error
     if not PROFILES_FILE.exists():
         return {}
     return json.loads(PROFILES_FILE.read_text(encoding="utf-8"))
@@ -58,7 +59,8 @@ def save_profiles(profiles):
                 )
             return
         except psycopg.Error as error:
-            app.logger.error("Could not save profiles to PostgreSQL: %s", error)
+            app.logger.exception("Could not save profiles to PostgreSQL")
+            raise RuntimeError("Không thể lưu dữ liệu vào database PostgreSQL. Kiểm tra DATABASE_URL trên Render.") from error
     temporary_file = PROFILES_FILE.with_suffix(".tmp")
     temporary_file.write_text(json.dumps(profiles, ensure_ascii=False, indent=2), encoding="utf-8")
     temporary_file.replace(PROFILES_FILE)
@@ -144,6 +146,20 @@ def index():
     response = make_response(render_template("index.html", profiles=profiles, stats=attendance_stats(profiles)))
     response.headers["Cache-Control"] = "no-store, max-age=0"
     return response
+
+
+@app.get("/health/storage")
+def storage_health():
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        return {"storage": "local-file", "persistent": False}, 503
+    try:
+        with psycopg.connect(database_url) as connection:
+            connection.execute("SELECT 1")
+        return {"storage": "postgresql", "persistent": True}
+    except psycopg.Error as error:
+        app.logger.exception("Database health check failed")
+        return {"storage": "postgresql", "persistent": False, "error": str(error)}, 503
 
 
 @app.post("/upload")
