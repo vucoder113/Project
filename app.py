@@ -1,10 +1,12 @@
 import json
+import base64
 import os
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from io import BytesIO, StringIO
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 import pandas as pd
 import qrcode
@@ -154,6 +156,39 @@ def qr_image_stream(content):
     return output
 
 
+def send_guest_email(profile, customer_id, qr_content):
+    api_key = os.getenv("BREVO_API_KEY")
+    sender_email = os.getenv("EMAIL_FROM")
+    recipient_email = profile["fields"].get("Email", "").strip()
+    if not api_key or not sender_email or not recipient_email:
+        return False
+    qr_bytes = qr_image_stream(qr_content).read()
+    payload = {
+        "sender": {"name": os.getenv("EMAIL_FROM_NAME", "Tasting BINHMINHGROUP"), "email": sender_email},
+        "to": [{"email": recipient_email, "name": profile["name"]}],
+        "subject": "Thư mời Tasting BINHMINHGROUP",
+        "htmlContent": (
+            f"<p>Xin chào {profile['name']},</p>"
+            f"<p>Mã khách hàng của bạn: <strong>{profile['fields'].get('Mã KH', '')}</strong></p>"
+            f"<p>Thư mời của bạn: <a href=\"{qr_content}\">Mở thư mời</a></p>"
+            "<p>Mã QR được đính kèm trong email này.</p>"
+        ),
+        "attachment": [{"content": base64.b64encode(qr_bytes).decode("ascii"), "name": "ma-qr-khach-moi.png"}],
+    }
+    request = Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"accept": "application/json", "api-key": api_key, "content-type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=15) as response:
+            return 200 <= response.status < 300
+    except Exception:
+        app.logger.exception("Could not send guest email")
+        return False
+
+
 def read_customer_file(upload_path, suffix):
     if suffix == ".csv":
         return pd.read_csv(upload_path)
@@ -285,6 +320,7 @@ def guest_registration():
     save_profiles(profiles)
     qr_content = f"{public_base_url()}{url_for('customer', customer_id=customer_id)}"
     create_qr_image(qr_content, QR_DIR / qr_filename)
+    send_guest_email(profile, customer_id, qr_content)
     return redirect(url_for("customer", customer_id=customer_id))
 
 
