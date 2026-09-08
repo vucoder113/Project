@@ -30,9 +30,9 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 _profiles_cache = None
 
 
-def load_profiles():
+def load_profiles(force_refresh=False):
     global _profiles_cache
-    if _profiles_cache is not None:
+    if _profiles_cache is not None and not force_refresh:
         return _profiles_cache
     database_url = os.getenv("DATABASE_URL")
     if database_url:
@@ -271,10 +271,11 @@ def storage_health():
 
 @app.get("/api/checkins")
 def checkin_updates():
-    profiles = load_profiles()
+    profiles = load_profiles(force_refresh=True)
     return {
         "total": len(profiles),
         "checked_in": sum(bool(profile.get("checkin_at")) for profile in profiles.values()),
+        "stats": attendance_stats(profiles),
         "profiles": {
             customer_id: {"checked_in": bool(profile.get("checkin_at")), "checkin_at": profile.get("checkin_at")}
             for customer_id, profile in profiles.items()
