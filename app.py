@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from io import BytesIO, StringIO
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import pandas as pd
@@ -195,6 +196,7 @@ def send_guest_email(profile, customer_id, qr_content):
     sender_email = os.getenv("EMAIL_FROM")
     recipient_email = profile["fields"].get("Email", "").strip()
     if not api_key or not sender_email or not recipient_email:
+        app.logger.warning("Email skipped: missing BREVO_API_KEY, EMAIL_FROM, or recipient Email")
         return False
     qr_bytes = qr_image_stream(qr_content).read()
     payload = {
@@ -218,6 +220,10 @@ def send_guest_email(profile, customer_id, qr_content):
     try:
         with urlopen(request, timeout=15) as response:
             return 200 <= response.status < 300
+    except HTTPError as error:
+        details = error.read().decode("utf-8", errors="replace")
+        app.logger.error("Brevo rejected email: HTTP %s %s", error.code, details)
+        return False
     except Exception:
         app.logger.exception("Could not send guest email")
         return False
