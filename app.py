@@ -269,6 +269,19 @@ def storage_health():
         return {"storage": "postgresql", "persistent": False, "error": str(error)}, 503
 
 
+@app.get("/api/checkins")
+def checkin_updates():
+    profiles = load_profiles()
+    return {
+        "total": len(profiles),
+        "checked_in": sum(bool(profile.get("checkin_at")) for profile in profiles.values()),
+        "profiles": {
+            customer_id: {"checked_in": bool(profile.get("checkin_at")), "checkin_at": profile.get("checkin_at")}
+            for customer_id, profile in profiles.items()
+        },
+    }
+
+
 @app.post("/upload")
 def upload():
     excel_file = request.files.get("excel_file")

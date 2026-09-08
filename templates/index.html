@@ -43,7 +43,7 @@
 				<div class="actions"><h2>Thống kê theo nhân viên phụ trách</h2><div class="exports"><a href="{{ url_for('export_new_guests') }}">Khách mới</a><a href="{{ url_for('export_existing_checkin') }}">Khách có QR đã check-in</a><a href="{{ url_for('export_checkin_xlsx') }}">Tổng Excel</a><a href="{{ url_for('export_checkin') }}">Tổng CSV</a></div></div>
 				<div class="table-wrap"><table><tr><th>Sale</th><th>Được mời</th><th>Đã đến</th><th>Tỷ lệ</th></tr>{% for sale, item in stats.items() %}<tr><td>{{ sale }}</td><td>{{ item.invited }}</td><td>{{ item.checked_in }}</td><td>{{ item.rate }}%</td></tr>{% endfor %}</table></div>
 			</section>
-			<section><div class="actions"><h2>Danh sách QR ({{ profiles|length }})</h2><p class="hint">Tìm theo số thứ tự, mã khách hoặc tên khách.</p></div><input id="guest-search" class="search-box" type="search" placeholder="Tìm số thứ tự, mã KH hoặc tên khách..."><div id="guest-grid" class="grid">{% for customer_id, profile in profiles.items() %}<article class="card guest-card" data-search="{{ loop.index }} {{ profile.name }} {{ profile.fields.get('Mã KH', '') }} {{ profile.fields.get('Mã khách hàng', '') }}"><div class="code">QR số {{ "%03d"|format(loop.index) }}</div><img loading="lazy" decoding="async" src="{{ url_for('qr_image', filename=profile.qr_filename) }}" alt="QR của {{ profile.name }}"><strong>{{ profile.name }}</strong><p class="code">Mã KH: {{ profile.fields.get('Mã KH') or profile.fields.get('Mã khách hàng') or 'Chưa có' }}</p>{% if profile.get('checkin_at') %}<span class="status done">Đã check-in</span>{% else %}<span class="status">Chưa check-in</span>{% endif %}<div class="card-links"><a href="{{ url_for('admin_customer_preview', customer_id=customer_id) }}" target="_blank" rel="noopener noreferrer">Xem thông tin</a><a href="{{ url_for('qr_image', filename=profile.qr_filename) }}" download>Tải QR</a><form method="post" action="{{ url_for('delete_customer', customer_id=customer_id) }}" onsubmit="const button=this.querySelector('button');if(!confirm('Xóa khách và mã QR này?'))return false;button.disabled=true;button.textContent='Đang xóa...';"><button class="delete-button" type="submit">Xóa</button></form></div></article>{% endfor %}</div><div id="search-empty" class="search-empty">Không tìm thấy khách phù hợp.</div></section>
+			<section><div class="actions"><h2>Danh sách QR ({{ profiles|length }})</h2><p class="hint">Tìm theo số thứ tự, mã khách hoặc tên khách.</p></div><input id="guest-search" class="search-box" type="search" placeholder="Tìm số thứ tự, mã KH hoặc tên khách..."><div id="guest-grid" class="grid">{% for customer_id, profile in profiles.items() %}<article class="card guest-card" data-customer-id="{{ customer_id }}" data-search="{{ loop.index }} {{ profile.name }} {{ profile.fields.get('Mã KH', '') }} {{ profile.fields.get('Mã khách hàng', '') }}"><div class="code">QR số {{ "%03d"|format(loop.index) }}</div><img loading="lazy" decoding="async" src="{{ url_for('qr_image', filename=profile.qr_filename) }}" alt="QR của {{ profile.name }}"><strong>{{ profile.name }}</strong><p class="code">Mã KH: {{ profile.fields.get('Mã KH') or profile.fields.get('Mã khách hàng') or 'Chưa có' }}</p>{% if profile.get('checkin_at') %}<span class="status done">Đã check-in</span>{% else %}<span class="status">Chưa check-in</span>{% endif %}<div class="card-links"><a href="{{ url_for('admin_customer_preview', customer_id=customer_id) }}" target="_blank" rel="noopener noreferrer">Xem thông tin</a><a href="{{ url_for('qr_image', filename=profile.qr_filename) }}" download>Tải QR</a><form method="post" action="{{ url_for('delete_customer', customer_id=customer_id) }}" onsubmit="const button=this.querySelector('button');if(!confirm('Xóa khách và mã QR này?'))return false;button.disabled=true;button.textContent='Đang xóa...';"><button class="delete-button" type="submit">Xóa</button></form></div></article>{% endfor %}</div><div id="search-empty" class="search-empty">Không tìm thấy khách phù hợp.</div></section>
 		{% else %}
 			<section class="panel empty"><strong>Chưa có dữ liệu khách</strong><p>Upload file Excel để tạo danh sách QR đầu tiên.</p></section>
 		{% endif %}
@@ -63,6 +63,26 @@
 			});
 			if (emptyMessage) emptyMessage.style.display = visible || !query ? 'none' : 'block';
 		});
+		let knownTotal = {{ profiles|length }};
+		async function refreshCheckins() {
+			try {
+				const response = await fetch('{{ url_for("checkin_updates") }}', {cache: 'no-store'});
+				if (!response.ok) return;
+				const data = await response.json();
+				if (data.total !== knownTotal) { window.location.reload(); return; }
+				const checkedInCount = document.querySelector('.metric.accent strong');
+				const waitingCount = document.querySelectorAll('.metric strong')[2];
+				if (checkedInCount) checkedInCount.textContent = data.checked_in;
+				if (waitingCount) waitingCount.textContent = data.total - data.checked_in;
+				Object.entries(data.profiles).forEach(([customerId, item]) => {
+					const card = document.querySelector(`[data-customer-id="${customerId}"]`);
+					if (!card) return;
+					const status = card.querySelector('.status');
+					if (status && item.checked_in) { status.textContent = 'Đã check-in'; status.classList.add('done'); }
+				});
+			} catch (error) { /* Keep the dashboard usable when a poll is interrupted. */ }
+		}
+		setInterval(refreshCheckins, 5000);
 	</script>
 </body>
 </html>
