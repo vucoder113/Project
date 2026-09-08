@@ -4,3 +4,4 @@ openpyxl>=3.1,<4
 xlrd>=2.0,<3
 qrcode[pil]>=7.4,<9
 gunicorn>=22,<24; sys_platform != "win32"
+psycopg[binary]>=3.2,<4

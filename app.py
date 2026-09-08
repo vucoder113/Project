@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 import qrcode
+import psycopg
 from qrcode.constants import ERROR_CORRECT_L
 from flask import Flask, abort, make_response, redirect, render_template, request, send_from_directory, url_for
 
@@ -25,12 +26,32 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 
 def load_profiles():
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        with psycopg.connect(database_url) as connection:
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS profiles_store (store_id INTEGER PRIMARY KEY, payload JSONB NOT NULL)"
+            )
+            row = connection.execute("SELECT payload FROM profiles_store WHERE store_id = 1").fetchone()
+            return row[0] if row else {}
     if not PROFILES_FILE.exists():
         return {}
     return json.loads(PROFILES_FILE.read_text(encoding="utf-8"))
 
 
 def save_profiles(profiles):
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        with psycopg.connect(database_url) as connection:
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS profiles_store (store_id INTEGER PRIMARY KEY, payload JSONB NOT NULL)"
+            )
+            connection.execute(
+                "INSERT INTO profiles_store (store_id, payload) VALUES (1, %s) "
+                "ON CONFLICT (store_id) DO UPDATE SET payload = EXCLUDED.payload",
+                (json.dumps(profiles, ensure_ascii=False),),
+            )
+        return
     temporary_file = PROFILES_FILE.with_suffix(".tmp")
     temporary_file.write_text(json.dumps(profiles, ensure_ascii=False, indent=2), encoding="utf-8")
     temporary_file.replace(PROFILES_FILE)
