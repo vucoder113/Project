@@ -116,6 +116,30 @@ def checkin_display(value):
     checked_in_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
     return checked_in_at.astimezone(timezone(timedelta(hours=7))).strftime("%d/%m/%Y %H:%M:%S")
 
+def export_rows(category="all"):
+    rows = []
+    for profile in load_profiles().values():
+        customer_code = str(profile.get("fields", {}).get("Mã KH", "")).strip().upper()
+        is_new_guest = customer_code.startswith("OL")
+        if category == "new" and not is_new_guest:
+            continue
+        if category == "existing_checkin" and (is_new_guest or not profile.get("checkin_at")):
+            continue
+        row = dict(profile["fields"])
+        row["Thời gian check-in"] = checkin_display(profile.get("checkin_at"))
+        rows.append(row)
+    return rows
+
+def excel_download(rows, filename):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        pd.DataFrame(rows).to_excel(writer, index=False, sheet_name="Dữ liệu")
+    output.seek(0)
+    response = make_response(output.getvalue())
+    response.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return response
+
 
 def vcard_value(value):
     return str(value).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
@@ -384,11 +408,7 @@ def delete_customer(customer_id):
 
 @app.get("/export-checkin.csv")
 def export_checkin():
-    rows = []
-    for profile in load_profiles().values():
-        row = dict(profile["fields"])
-        row["Thời gian check-in"] = checkin_display(profile.get("checkin_at"))
-        rows.append(row)
+    rows = export_rows()
     output = StringIO()
     pd.DataFrame(rows).to_csv(output, index=False, encoding="utf-8-sig")
     response = make_response(output.getvalue())
@@ -399,19 +419,15 @@ def export_checkin():
 
 @app.get("/export-checkin.xlsx")
 def export_checkin_xlsx():
-    rows = []
-    for profile in load_profiles().values():
-        row = dict(profile["fields"])
-        row["Thời gian check-in"] = checkin_display(profile.get("checkin_at"))
-        rows.append(row)
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        pd.DataFrame(rows).to_excel(writer, index=False, sheet_name="Check-in")
-    output.seek(0)
-    response = make_response(output.getvalue())
-    response.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    response.headers["Content-Disposition"] = "attachment; filename=du-lieu-check-in.xlsx"
-    return response
+    return excel_download(export_rows(), "du-lieu-tong-hop.xlsx")
+
+@app.get("/export-new-guests.xlsx")
+def export_new_guests():
+    return excel_download(export_rows("new"), "du-lieu-khach-moi.xlsx")
+
+@app.get("/export-existing-checkin.xlsx")
+def export_existing_checkin():
+    return excel_download(export_rows("existing_checkin"), "du-lieu-khach-co-san-qr-check-in.xlsx")
 
 
 @app.get("/qr/<path:filename>")
