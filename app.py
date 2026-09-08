@@ -2,7 +2,7 @@ import json
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from io import BytesIO, StringIO
 from pathlib import Path
 
@@ -106,6 +106,13 @@ def next_guest_code(profiles):
         if match:
             highest_number = max(highest_number, int(match.group(1)))
     return f"OL{highest_number + 1:02d}"
+
+
+def checkin_display(value):
+    if not value:
+        return "Chưa check-in"
+    checked_in_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return checked_in_at.astimezone(timezone(timedelta(hours=7))).strftime("%d/%m/%Y %H:%M:%S")
 
 
 def vcard_value(value):
@@ -331,7 +338,7 @@ def export_checkin():
     rows = []
     for profile in load_profiles().values():
         row = dict(profile["fields"])
-        row["Thời gian check-in"] = profile.get("checkin_at") or "Chưa check-in"
+        row["Thời gian check-in"] = checkin_display(profile.get("checkin_at"))
         rows.append(row)
     output = StringIO()
     pd.DataFrame(rows).to_csv(output, index=False, encoding="utf-8-sig")
@@ -346,7 +353,7 @@ def export_checkin_xlsx():
     rows = []
     for profile in load_profiles().values():
         row = dict(profile["fields"])
-        row["Thời gian check-in"] = profile.get("checkin_at") or "Chưa check-in"
+        row["Thời gian check-in"] = checkin_display(profile.get("checkin_at"))
         rows.append(row)
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
