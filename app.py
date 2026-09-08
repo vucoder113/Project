@@ -386,7 +386,17 @@ def customer(customer_id):
         profile["checkin_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         save_profiles(profiles)
     invitation = next(iter(DATA_DIR.glob("invitation.*")), None)
-    return render_template("customer.html", profile=profile, invitation_exists=invitation is not None)
+    return render_template("customer.html", profile=profile, invitation_exists=invitation is not None, admin_preview=False)
+
+
+@app.get("/admin/customer/<customer_id>")
+def admin_customer_preview(customer_id):
+    profiles = load_profiles()
+    profile = profiles.get(customer_id)
+    if profile is None:
+        abort(404)
+    invitation = next(iter(DATA_DIR.glob("invitation.*")), None)
+    return render_template("customer.html", profile=profile, invitation_exists=invitation is not None, admin_preview=True)
 
 
 @app.get("/invitation")
