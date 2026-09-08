@@ -3,33 +3,15 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Quản lý khách mời</title>
-	<style>
-		body{max-width:1100px;margin:0 auto;padding:28px 18px;font-family:Arial;background:#f4f7f9;color:#17202a}
-		main{background:#fff;padding:24px;border-radius:12px}
-		form{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:16px;background:#eef5f5;border-radius:8px}
-		button{padding:11px 16px;border:0;border-radius:6px;color:#fff;background:#087f8c;cursor:pointer}
-		table{border-collapse:collapse;width:100%;margin:12px 0 24px}
-		th,td{border:1px solid #dbe4e7;padding:8px;text-align:left}th{background:#eef5f5}
-		.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
-		.card{text-align:center;padding:16px;border:1px solid #dbe4e7;border-radius:8px}.card img{width:160px;max-width:100%}
-		a{color:#087f8c;word-break:break-all}
-	</style>
-</head>
-<body>
-	<main>
-		<h1>Quản lý khách mời</h1>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Tasting BINHMINHGROUP | Admin</title>
 	<style>
-		:root{--ink:#14212b;--muted:#6d7d86;--line:#dce7e8;--paper:#fff;--wash:#f3f7f6;--teal:#087f8c;--teal-dark:#075d68;--mint:#e6f4f1;--gold:#d69b38}
-		*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf6f4,#f8faf9 50%,#eaf1f2);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+		:root{--ink:#20231f;--muted:#73766c;--line:#e3e0d7;--paper:#fffdf8;--wine:#6f2432;--wine-dark:#4d1622;--olive:#67734a;--gold:#c89945;--cream:#f6f1e7}
+		*{box-sizing:border-box}body{margin:0;color:var(--ink);font-family:Georgia,"Times New Roman",serif;background:var(--cream);background-image:linear-gradient(90deg,rgba(111,36,50,.04) 1px,transparent 1px),linear-gradient(rgba(111,36,50,.035) 1px,transparent 1px);background-size:34px 34px}
 		.shell{max-width:1240px;margin:0 auto;padding:34px 20px 56px}.topbar{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:28px}
-		.eyebrow{margin:0 0 7px;color:var(--teal);font-size:.76rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase}.brand{margin:0;font-size:clamp(2rem,4vw,3.4rem);letter-spacing:-.04em;line-height:1}.subtitle{margin:12px 0 0;color:var(--muted);font-size:1rem}
-		.download{display:inline-flex;align-items:center;gap:9px;padding:12px 16px;border-radius:8px;background:var(--teal);color:#fff;text-decoration:none;font-weight:750;white-space:nowrap}.download:hover{background:var(--teal-dark)}
-		.panel{background:rgba(255,255,255,.92);border:1px solid rgba(220,231,232,.9);border-radius:14px;box-shadow:0 16px 38px rgba(25,61,68,.08);padding:22px;margin-bottom:20px}.panel-heading{display:flex;justify-content:space-between;gap:16px;align-items:baseline;margin-bottom:16px}.panel h2{margin:0;font-size:1.18rem}.hint{margin:0;color:var(--muted);font-size:.9rem}
-		.upload{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) auto auto;gap:12px;align-items:end}.field{display:grid;gap:7px;color:var(--muted);font-size:.83rem;font-weight:750}.field input[type=file]{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}.check{display:flex;align-items:center;gap:7px;height:42px;white-space:nowrap;color:var(--muted);font-size:.9rem}.check input{accent-color:var(--teal)}button{height:42px;padding:0 18px;border:0;border-radius:8px;background:var(--teal);color:#fff;font-weight:800;cursor:pointer}button:hover{background:var(--teal-dark)}
+		.eyebrow{margin:0 0 7px;color:var(--wine);font:800 .76rem Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase}.brand{margin:0;font-size:clamp(2rem,4vw,3.4rem);letter-spacing:-.04em;line-height:1}.subtitle{margin:12px 0 0;color:var(--muted);font:15px Arial,sans-serif}.brand-mark{display:flex;align-items:center;gap:14px}.seal{display:grid;place-items:center;width:58px;height:58px;border:1px solid var(--gold);border-radius:50%;color:var(--wine);font:700 11px Arial,sans-serif;text-align:center}
+		.download{display:inline-flex;align-items:center;gap:9px;padding:12px 16px;border-radius:5px;background:var(--wine);color:#fff;text-decoration:none;font:700 14px Arial,sans-serif;white-space:nowrap}.download:hover{background:var(--wine-dark)}
+		.panel{background:rgba(255,253,248,.94);border:1px solid var(--line);border-radius:5px;box-shadow:0 14px 34px rgba(71,44,28,.08);padding:22px;margin-bottom:20px}.panel-heading{display:flex;justify-content:space-between;gap:16px;align-items:baseline;margin-bottom:16px}.panel h2{margin:0;font-size:1.18rem}.hint{margin:0;color:var(--muted);font:13px Arial,sans-serif}
+		.upload{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) auto auto;gap:12px;align-items:end}.field{display:grid;gap:7px;color:var(--muted);font:700 12px Arial,sans-serif}.field input[type=file]{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}.check{display:flex;align-items:center;gap:7px;height:42px;white-space:nowrap;color:var(--muted);font:13px Arial,sans-serif}.check input{accent-color:var(--wine)}button{height:42px;padding:0 18px;border:0;border-radius:4px;background:var(--olive);color:#fff;font:700 13px Arial,sans-serif;cursor:pointer}button:hover{background:#4f5c36}button:disabled{opacity:.75;cursor:wait}
 		.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}.metric{padding:18px 20px;background:var(--paper);border:1px solid var(--line);border-radius:12px}.metric strong{display:block;font-size:1.8rem}.metric span{color:var(--muted);font-size:.88rem}.metric.accent{border-top:4px solid var(--gold)}
 		.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}.actions h2{margin:0}.exports{display:flex;gap:13px}.exports a{color:var(--teal);font-weight:700;font-size:.9rem}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:.9rem}th{color:var(--muted);font-size:.75rem;letter-spacing:.05em;text-transform:uppercase}
 		.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:15px}.card{position:relative;text-align:center;padding:18px 14px;background:#fff;border:1px solid var(--line);border-radius:12px}.card img{display:block;width:156px;height:156px;object-fit:contain;margin:0 auto 13px}.card strong{display:block;overflow-wrap:anywhere}.status{display:inline-block;margin:10px 0;padding:5px 9px;border-radius:999px;background:#f1f4f4;color:var(--muted);font-size:.78rem}.status.done{background:var(--mint);color:var(--teal-dark);font-weight:800}.card-links{display:flex;justify-content:center;gap:12px;font-size:.84rem}.card a{color:var(--teal);font-weight:700}.empty{text-align:center;padding:42px 20px;color:var(--muted)}
@@ -40,13 +22,13 @@
 			<p><a href="{{ url_for('export_checkin_xlsx') }}">Tải dữ liệu check-in Excel</a> | <a href="{{ url_for('export_checkin') }}">Tải CSV</a></p>
 	<div class="shell">
 		<header class="topbar">
-			<div><p class="eyebrow">BINHMINHGROUP · TASTING</p><h1 class="brand">Quản lý khách mời</h1><p class="subtitle">Theo dõi QR, thông tin khách và check-in trong một nơi.</p></div>
+			<div class="brand-mark"><div class="seal">TASTING<br>BMG</div><div><p class="eyebrow">BINHMINHGROUP · TASTING</p><h1 class="brand">Quản lý khách mời</h1><p class="subtitle">Theo dõi QR, thông tin khách và check-in trong một nơi.</p></div></div>
 			<a class="download" href="{{ url_for('common_qr') }}" download><span>▣</span> Tải QR chung</a>
 		</header>
 
 		<section class="panel">
 			<div class="panel-heading"><div><h2>Cập nhật danh sách khách</h2><p class="hint">Upload thêm Excel sẽ giữ lại khách cũ và bổ sung khách mới.</p></div></div>
-			<form class="upload" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+			<form class="upload" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Đang cập nhật...';">
 				<label class="field">File Excel / CSV<input type="file" name="excel_file" accept=".xlsx,.xls,.csv" required></label>
 				<label class="field">Ảnh thiệp (không bắt buộc)<input type="file" name="invitation_image" accept=".png,.jpg,.jpeg,.webp"></label>
 				<label class="check"><input type="checkbox" name="offline_qr"> QR offline</label>

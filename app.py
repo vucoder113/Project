@@ -141,7 +141,9 @@ CUSTOMER_FIELDS = ["Mã KH", "Họ tên", "Công ty", "Chức vụ", "Điện th
 @app.get("/")
 def index():
     profiles = load_profiles()
-    return render_template("index.html", profiles=profiles, stats=attendance_stats(profiles))
+    response = make_response(render_template("index.html", profiles=profiles, stats=attendance_stats(profiles)))
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
 
 
 @app.post("/upload")
