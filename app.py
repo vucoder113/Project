@@ -104,7 +104,7 @@ def read_customer_file(upload_path, suffix):
 
 
 def public_base_url():
-    return os.getenv("PUBLIC_BASE_URL", request.host_url).rstrip("/")
+    return request.host_url.rstrip("/")
 
 
 CUSTOMER_FIELDS = ["Mã KH", "Họ tên", "Công ty", "Chức vụ", "Điện thoại", "Email", "Nhân viên phụ trách", "Tình trạng"]
@@ -176,6 +176,7 @@ def upload():
 
 
 @app.route("/dang-ky", methods=["GET", "POST"])
+@app.route("/guest_registration", methods=["GET", "POST"])
 def guest_registration():
     if request.method == "GET":
         profiles = load_profiles()
