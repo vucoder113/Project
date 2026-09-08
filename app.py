@@ -369,6 +369,19 @@ def checkin(customer_id):
     return redirect(url_for("customer", customer_id=customer_id))
 
 
+@app.post("/admin/customer/<customer_id>/delete")
+def delete_customer(customer_id):
+    profiles = load_profiles()
+    profile = profiles.pop(customer_id, None)
+    if profile is None:
+        abort(404)
+    qr_path = QR_DIR / profile.get("qr_filename", "")
+    if qr_path.exists():
+        qr_path.unlink()
+    save_profiles(profiles)
+    return redirect(url_for("index"))
+
+
 @app.get("/export-checkin.csv")
 def export_checkin():
     rows = []
