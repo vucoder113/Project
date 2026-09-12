@@ -209,18 +209,42 @@ def send_guest_email(profile, customer_id, qr_content):
     if not api_key or not sender_email or not recipient_email:
         app.logger.warning("Email skipped: missing BREVO_API_KEY, EMAIL_FROM, or recipient Email")
         return False
+    
     qr_bytes = qr_image_stream(qr_content).read()
+    attachments = [
+        {"content": base64.b64encode(qr_bytes).decode("ascii"), "name": "ma-qr-khach-moi.png"}
+    ]
+    
+    # Check and attach invitation card if exists
+    invitation = next(iter(DATA_DIR.glob("invitation.*")), None)
+    has_invitation = False
+    if invitation and invitation.exists():
+        try:
+            invitation_bytes = invitation.read_bytes()
+            attachments.append({
+                "content": base64.b64encode(invitation_bytes).decode("ascii"),
+                "name": f"thiep-moi{invitation.suffix}"
+            })
+            has_invitation = True
+        except Exception:
+            app.logger.exception("Could not read invitation image for attachment")
+
+    html_body = (
+        f"<p>Xin chào {profile['name']},</p>"
+        f"<p>Mã khách hàng của bạn: <strong>{profile['fields'].get('Mã KH', '') or profile['fields'].get('Mã khách hàng', '') or ''}</strong></p>"
+        f"<p>Chi tiết thư mời của bạn: <a href=\"{qr_content}\">Mở thư mời</a></p>"
+    )
+    if has_invitation:
+        html_body += "<p>Thiệp mời và mã QR đã được đính kèm trong email này.</p>"
+    else:
+        html_body += "<p>Mã QR đã được đính kèm trong email này.</p>"
+
     payload = {
         "sender": {"name": os.getenv("EMAIL_FROM_NAME", "Tasting BINHMINHGROUP"), "email": sender_email},
         "to": [{"email": recipient_email, "name": profile["name"]}],
         "subject": "Thư mời Tasting BINHMINHGROUP",
-        "htmlContent": (
-            f"<p>Xin chào {profile['name']},</p>"
-            f"<p>Mã khách hàng của bạn: <strong>{profile['fields'].get('Mã KH', '')}</strong></p>"
-            f"<p>Thư mời của bạn: <a href=\"{qr_content}\">Mở thư mời</a></p>"
-            "<p>Mã QR được đính kèm trong email này.</p>"
-        ),
-        "attachment": [{"content": base64.b64encode(qr_bytes).decode("ascii"), "name": "ma-qr-khach-moi.png"}],
+        "htmlContent": html_body,
+        "attachment": attachments,
     }
     request = Request(
         "https://api.brevo.com/v3/smtp/email",
