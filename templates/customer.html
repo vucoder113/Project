@@ -3,25 +3,374 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Thư mời TASTE THE WORLD</title>
+  <title>Thư mời Tasting BINHMINHGROUP - {{ profile.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root{--wine:#741e2a;--gold:#c89945;--ink:#24221f;--paper:#fffdf8;--muted:#6e6a62}
-    *{box-sizing:border-box}body{margin:0;padding:28px 16px;color:var(--ink);font-family:"Segoe UI",Arial,sans-serif;background:#f5eee4 url("{% if invitation_exists %}{{ url_for('invitation') }}{% else %}{{ url_for('static', filename='logo4.jpg') }}{% endif %}") center/cover fixed no-repeat}
-    main{max-width:760px;margin:0 auto;background:rgba(255,253,248,.97);border:1px solid rgba(200,153,69,.45);box-shadow:0 20px 60px rgba(54,20,17,.2);border-radius:8px;overflow:hidden}.event-banner{display:block;width:100%;height:auto;max-height:430px;object-fit:cover}.content{padding:28px 30px 34px}h1{margin:0;color:var(--wine);font-size:clamp(1.8rem,5vw,2.7rem);font-weight:750;letter-spacing:-.02em}.code{margin:8px 0 0;color:var(--wine);font-weight:700;letter-spacing:.08em}.preview{margin:0 0 18px;padding:9px 12px;background:#eee9dc;color:#6e6a62;border-radius:4px;font-size:.86rem}.checkin{margin:24px 0;padding:18px;border-left:4px solid var(--gold);background:#f8f0df;border-radius:4px}.checkin button{padding:12px 18px;border:0;border-radius:4px;color:#fff;background:var(--wine);font-weight:700;cursor:pointer}.done{color:#4f6839;font-weight:700}.time{color:var(--muted);font-size:.9rem}dl{display:grid;grid-template-columns:minmax(130px,.7fr) 1.3fr;gap:0;margin:24px 0 0}dt,dd{padding:12px 0;border-bottom:1px solid #eadfce}dt{font-weight:700;color:var(--muted)}dd{margin:0;word-break:break-word}@media(max-width:520px){body{padding:0}.content{padding:22px 18px 28px}dl{display:block}dt{padding-bottom:4px;border-bottom:0}dd{padding-top:0}}
+    :root {
+      --wine: #6f2432;
+      --wine-dark: #4d1622;
+      --wine-light: #8c3143;
+      --gold: #c89945;
+      --gold-light: #f4e8d3;
+      --ink: #1f221e;
+      --muted: #6b7067;
+      --paper: #fffdf9;
+      --cream: #f6f1e7;
+      --shadow: 0 20px 50px rgba(54, 20, 17, 0.15);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px 16px 40px;
+      color: var(--ink);
+      font-family: 'Plus Jakarta Sans', "Segoe UI", Arial, sans-serif;
+      background-color: var(--cream);
+      background-image: linear-gradient(rgba(246, 241, 231, 0.85), rgba(246, 241, 231, 0.85)),
+                        url("{% if invitation_exists %}{{ url_for('invitation') }}{% else %}{{ url_for('static', filename='logo4.jpg') }}{% endif %}");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .invite-card {
+      width: 100%;
+      max-width: 680px;
+      background: var(--paper);
+      border: 1px solid rgba(200, 153, 69, 0.35);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .brand-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      background: #fff;
+      border-bottom: 1px solid rgba(200, 153, 69, 0.2);
+    }
+
+    .brand-logos {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      height: 42px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .event-tag {
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      color: var(--wine);
+      text-transform: uppercase;
+      background: var(--gold-light);
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+
+    .invitation-banner {
+      width: 100%;
+      max-height: 380px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card-body {
+      padding: 32px 28px;
+    }
+
+    .preview-badge {
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 6px 14px;
+      background: #eee9dc;
+      color: #6e6a62;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .greeting-subtitle {
+      margin: 0;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+
+    .guest-name {
+      margin: 6px 0 4px;
+      color: var(--wine);
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .customer-code-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 24px;
+      padding: 4px 12px;
+      background: rgba(111, 36, 50, 0.08);
+      color: var(--wine-dark);
+      font-weight: 700;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    /* Embedded QR Section */
+    .qr-container-box {
+      margin: 28px 0;
+      padding: 28px 20px;
+      background: linear-gradient(145deg, #ffffff, #faf6ee);
+      border: 2px dashed var(--gold);
+      border-radius: 14px;
+      text-align: center;
+      position: relative;
+    }
+
+    .qr-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--wine);
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .qr-wrapper {
+      position: relative;
+      display: inline-block;
+      padding: 12px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(111, 36, 50, 0.12);
+      border: 1px solid rgba(200, 153, 69, 0.3);
+    }
+
+    .qr-image {
+      display: block;
+      width: 210px;
+      height: 210px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    .checkin-status {
+      margin-top: 18px;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: inline-block;
+    }
+
+    .checkin-status.waiting {
+      background: #fdf3e3;
+      color: #92580c;
+      border: 1px solid #f3d4a0;
+    }
+
+    .checkin-status.done {
+      background: #eaf3e6;
+      color: #2e6024;
+      border: 1px solid #b7dfae;
+    }
+
+    .checkin-time {
+      display: block;
+      font-size: 0.8rem;
+      margin-top: 4px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .download-qr-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 10px 20px;
+      background: var(--wine);
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.88rem;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+
+    .download-qr-btn:hover {
+      background: var(--wine-dark);
+    }
+
+    /* Details List */
+    .details-section {
+      margin-top: 28px;
+      border-top: 1px solid rgba(200, 153, 69, 0.25);
+      padding-top: 20px;
+    }
+
+    .details-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .info-item {
+      padding: 12px 14px;
+      background: #fbf9f4;
+      border-radius: 8px;
+      border: 1px solid #efe8da;
+    }
+
+    .info-item.full-width {
+      grid-column: span 2;
+    }
+
+    .info-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .info-value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ink);
+      word-break: break-word;
+    }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(200, 153, 69, 0.2);
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 580px) {
+      body { padding: 12px 10px 30px; }
+      .card-body { padding: 22px 18px; }
+      .info-grid { grid-template-columns: 1fr; }
+      .info-item.full-width { grid-column: span 1; }
+      .qr-image { width: 180px; height: 180px; }
+      .brand-header { padding: 14px 16px; }
+      .brand-logo { height: 34px; }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <img class="event-banner" src="{% if invitation_exists %}{{ url_for('invitation') }}{% else %}{{ url_for('static', filename='logo4.jpg') }}{% endif %}" alt="TASTE THE WORLD 2026">
-    <div class="content">
-      {% if admin_preview %}<p class="preview">Chế độ xem admin · Không ghi nhận check-in</p>{% endif %}<h1>Thân mời {{ profile.name }}</h1>
-      <p class="code">Mã khách hàng: {{ profile.fields.get('Mã KH') or profile.fields.get('Mã khách hàng') or 'Chưa có' }}</p>
-      <div class="checkin">
-        {% if profile.get('checkin_at') %}<p class="done">Đã check-in thành công</p><small class="time">Thời gian: {{ profile.checkin_at }}</small>{% elif admin_preview %}<p>Đây là trang xem thông tin, chưa thực hiện check-in.</p>{% else %}<p class="done">Vui lòng xuất trình mã QR này cho admin hoặc nhân viên sự kiện để check-in.</p>{% endif %}
+  <div class="invite-card">
+    <header class="brand-header">
+      <div class="brand-logos">
+        <img class="brand-logo" src="{{ url_for('static', filename='logo-binhminh.png') }}" alt="Binh Minh Group">
+        <img class="brand-logo" src="{{ url_for('static', filename='logo-vineyard.jpg') }}" alt="Vineyard">
       </div>
-      <dl>{% for field, value in profile.fields.items() %}<dt>{{ field }}</dt><dd>{{ value or "Chưa cập nhật" }}</dd>{% endfor %}</dl>
-    </div>
-  </main>
+      <span class="event-tag">Thư mời Tasting</span>
+    </header>
 
+    {% if invitation_exists %}
+      <img class="invitation-banner" src="{{ url_for('invitation') }}" alt="Thiệp mời Tasting BINHMINHGROUP">
+    {% endif %}
+
+    <div class="card-body">
+      {% if admin_preview %}
+        <div class="preview-badge">Chế độ xem admin · Không ghi nhận check-in</div>
+      {% endif %}
+
+      <p class="greeting-subtitle">Trân trọng kính mời</p>
+      <h1 class="guest-name">{{ profile.name }}</h1>
+      <div class="customer-code-badge">
+        <span>Mã KH:</span>
+        <strong>{{ profile.fields.get('Mã KH') or profile.fields.get('Mã khách hàng') or 'Chưa có' }}</strong>
+      </div>
+
+      <!-- Embedded QR Code Card -->
+      <div class="qr-container-box">
+        <div class="qr-title">Mã QR Check-In Sự Kiện</div>
+        <div class="qr-wrapper">
+          <img class="qr-image" src="{{ url_for('qr_image', filename=profile.qr_filename) }}" alt="Mã QR check-in của {{ profile.name }}">
+        </div>
+
+        <div>
+          {% if profile.get('checkin_at') %}
+            <div class="checkin-status done">
+              ✓ Đã check-in thành công
+              <span class="checkin-time">Thời gian: {{ profile.checkin_at }}</span>
+            </div>
+          {% elif admin_preview %}
+            <div class="checkin-status waiting">
+              Đây là trang xem thử thông tin (Admin)
+            </div>
+          {% else %}
+            <div class="checkin-status waiting">
+              Vui lòng xuất trình mã QR này tại cửa đón khách
+            </div>
+          {% endif %}
+        </div>
+
+        <div>
+          <a class="download-qr-btn" href="{{ url_for('qr_image', filename=profile.qr_filename) }}" download="QR_{{ profile.name }}.png">
+            📥 Tải mã QR về máy
+          </a>
+        </div>
+      </div>
+
+      <!-- Guest Details -->
+      <div class="details-section">
+        <div class="details-title">Thông tin khách mời</div>
+        <div class="info-grid">
+          {% for field, value in profile.fields.items() %}
+            <div class="info-item {% if field in ['Công ty', 'Chức vụ', 'Email'] %}full-width{% endif %}">
+              <div class="info-label">{{ field }}</div>
+              <div class="info-value">{{ value or "Chưa cập nhật" }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <footer class="footer-note">
+        <p>Rất hân hạnh được đón tiếp Quý khách tại buổi tiệc Tasting BINHMINHGROUP.</p>
+      </footer>
+    </div>
+  </div>
 </body>
 </html>
