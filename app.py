@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO, StringIO
 from pathlib import Path
 from urllib.error import HTTPError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 import pandas as pd
@@ -104,7 +105,7 @@ def safe_filename(value):
 
 
 def profile_identity(fields):
-    for field in ("Mã KH", "Mã khách hàng", "Email", "Điện thoại", "Họ tên"):
+    for field in ("Mã KH", "Mã khách hàng", "Điện thoại", "Họ tên"):
         value = fields.get(field, "").strip().lower()
         if value:
             return field, value
@@ -156,12 +157,11 @@ def vcard_value(value):
     return str(value).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
 
 
-def make_offline_qr_content(fields, name):
-    return json.dumps(
-        {"THÔNG TIN KHÁCH HÀNG": {field: value or "Chưa cập nhật" for field, value in fields.items()}},
-        ensure_ascii=False,
-        indent=2,
-    )
+def make_offline_qr_content(fields, name, customer_id=None):
+    payload = {"THÔNG TIN KHÁCH HÀNG": {field: value or "Chưa cập nhật" for field, value in fields.items()}}
+    if customer_id:
+        payload["customer_id"] = customer_id
+    return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
 def create_qr_image(content, output_path):
@@ -191,10 +191,21 @@ def qr_image_stream(content):
     return output
 
 
+def normalized_email(value):
+    return str(value or "").strip().lower()
+
+
+def email_value(fields):
+    for field, value in fields.items():
+        if str(field).strip().lower() in {"email", "e-mail", "mail"}:
+            return str(value).strip()
+    return ""
+
+
 def send_guest_email(profile, customer_id, qr_content):
     api_key = os.getenv("BREVO_API_KEY")
     sender_email = os.getenv("EMAIL_FROM")
-    recipient_email = profile["fields"].get("Email", "").strip()
+    recipient_email = email_value(profile["fields"])
     if not api_key or not sender_email or not recipient_email:
         app.logger.warning("Email skipped: missing BREVO_API_KEY, EMAIL_FROM, or recipient Email")
         return False
@@ -242,6 +253,22 @@ def read_customer_file(upload_path, suffix):
 
 def public_base_url():
     return request.host_url.rstrip("/")
+
+
+def customer_id_from_qr(qr_data):
+    qr_data = str(qr_data or "").strip()
+    if not qr_data:
+        return None
+    try:
+        payload = json.loads(qr_data)
+        customer_id = payload.get("customer_id")
+        if customer_id:
+            return str(customer_id)
+    except (TypeError, ValueError):
+        pass
+    parsed = urlparse(qr_data)
+    match = re.search(r"/customer/([A-Za-z0-9]+)$", parsed.path.rstrip("/"))
+    return match.group(1) if match else None
 
 
 CUSTOMER_FIELDS = ["Mã KH", "Họ tên", "Công ty", "Chức vụ", "Điện thoại", "Email", "Nhân viên phụ trách", "Tình trạng"]
@@ -313,6 +340,7 @@ def upload():
     next_number = len(profiles) + 1
     for row_number, (_, row) in enumerate(dataframe.iterrows(), start=1):
         fields = {str(column).strip(): clean_value(value) for column, value in row.items()}
+        email = email_value(fields)
         name = next((value for key, value in fields.items() if "tên" in key.lower() or "name" in key.lower()), f"Khách hàng {row_number}")
         identity = profile_identity(fields)
         customer_id = identities.get(identity) if identity else None
@@ -322,7 +350,7 @@ def upload():
             next_number += 1
         offline_qr = bool(request.form.get("offline_qr"))
         if offline_qr:
-            qr_content = make_offline_qr_content(fields, name)
+            qr_content = make_offline_qr_content(fields, name, customer_id)
         else:
             qr_content = f"{public_base_url()}{url_for('customer', customer_id=customer_id)}"
         qr_filename = old_profile["qr_filename"] if old_profile else f"{next_number - 1:03d}_{safe_filename(name)}_{customer_id}.png"
@@ -331,9 +359,15 @@ def upload():
             "fields": fields,
             "qr_filename": qr_filename,
             "checkin_at": old_profile.get("checkin_at") if old_profile else None,
+            "email_sent_to": old_profile.get("email_sent_to", "") if old_profile else "",
         }
         if offline_qr:
             create_qr_image(qr_content, QR_DIR / qr_filename)
+        if email:
+            recipient_email = normalized_email(email)
+            if recipient_email != profile["email_sent_to"].strip().lower():
+                if send_guest_email(profile, customer_id, qr_content):
+                    profile["email_sent_to"] = recipient_email
         profiles[customer_id] = profile
         if identity:
             identities[identity] = customer_id
@@ -368,13 +402,17 @@ def guest_registration():
         "name": name,
         "fields": fields,
         "qr_filename": qr_filename,
-        "checkin_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "checkin_at": None,
+        "email_sent_to": "",
     }
     profiles[customer_id] = profile
     save_profiles(profiles)
     qr_content = f"{public_base_url()}{url_for('customer', customer_id=customer_id)}"
     create_qr_image(qr_content, QR_DIR / qr_filename)
-    send_guest_email(profile, customer_id, qr_content)
+    email = email_value(fields)
+    if email and send_guest_email(profile, customer_id, qr_content):
+        profile["email_sent_to"] = normalized_email(email)
+        save_profiles(profiles)
     return redirect(url_for("customer", customer_id=customer_id))
 
 
@@ -396,11 +434,8 @@ def customer(customer_id):
     profile = profiles.get(customer_id)
     if profile is None:
         abort(404)
-    if not profile.get("checkin_at"):
-        profile["checkin_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        save_profiles(profiles)
     invitation = next(iter(DATA_DIR.glob("invitation.*")), None)
-    return render_template("customer.html", profile=profile, invitation_exists=invitation is not None, admin_preview=False)
+    return render_template("customer.html", profile=profile, invitation_exists=invitation is not None, admin_preview=False, checkin_error=None)
 
 
 @app.get("/admin/customer/<customer_id>")
@@ -423,14 +458,28 @@ def invitation():
 
 @app.post("/customer/<customer_id>/checkin")
 def checkin(customer_id):
+    abort(403)
+
+
+@app.post("/admin/checkin")
+def admin_checkin():
+    customer_id = customer_id_from_qr(request.form.get("qr_data"))
     profiles = load_profiles()
-    profile = profiles.get(customer_id)
+    profile = profiles.get(customer_id) if customer_id else None
     if profile is None:
-        abort(404)
-    if not profile.get("checkin_at"):
+        return {"ok": False, "message": "QR không thuộc danh sách khách của hệ thống."}, 404
+
+    already_checked_in = bool(profile.get("checkin_at"))
+    if not already_checked_in:
         profile["checkin_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         save_profiles(profiles)
-    return redirect(url_for("customer", customer_id=customer_id))
+
+    return {
+        "ok": True,
+        "customer_id": customer_id,
+        "name": profile["name"],
+        "already_checked_in": already_checked_in,
+    }
 
 
 @app.post("/admin/customer/<customer_id>/delete")

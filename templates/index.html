@@ -10,6 +10,7 @@
 		.shell{max-width:1240px;margin:0 auto;padding:34px 20px 56px}.topbar{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:28px}
 		.eyebrow{margin:0 0 7px;color:var(--wine);font:800 .76rem Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase}.brand{margin:0;font-size:clamp(2rem,4vw,3.4rem);letter-spacing:-.04em;line-height:1}.subtitle{margin:12px 0 0;color:var(--muted);font:15px Arial,sans-serif}.brand-mark{display:flex;align-items:center;gap:14px}.brand-logo{width:108px;height:78px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:4px;padding:5px}.wine-logo{width:68px;height:78px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:4px;padding:5px}
 		.download{display:inline-flex;align-items:center;gap:9px;padding:12px 16px;border-radius:5px;background:var(--wine);color:#fff;text-decoration:none;font:700 14px Arial,sans-serif;white-space:nowrap}.download:hover{background:var(--wine-dark)}
+		.scanner{display:grid;grid-template-columns:minmax(280px,420px) 1fr;gap:22px;align-items:start}.reader{min-height:280px;background:#1f2421;border-radius:5px;overflow:hidden}.reader video{width:100%;display:block}.scan-result{padding:16px;background:#f8f0df;border-left:4px solid var(--gold);min-height:100px}.scan-result strong{display:block;color:var(--wine);margin-bottom:7px}.scan-button{background:var(--wine)}
 		.panel{background:rgba(255,253,248,.94);border:1px solid var(--line);border-radius:5px;box-shadow:0 14px 34px rgba(71,44,28,.08);padding:22px;margin-bottom:20px}.panel-heading{display:flex;justify-content:space-between;gap:16px;align-items:baseline;margin-bottom:16px}.panel h2{margin:0;font-size:1.18rem}.hint{margin:0;color:var(--muted);font:13px Arial,sans-serif}
 		.upload{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) auto auto;gap:12px;align-items:end}.field{display:grid;gap:7px;color:var(--muted);font:700 12px Arial,sans-serif}.field input[type=file]{width:100%;padding:10px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}.check{display:flex;align-items:center;gap:7px;height:42px;white-space:nowrap;color:var(--muted);font:13px Arial,sans-serif}.check input{accent-color:var(--wine)}button{height:42px;padding:0 18px;border:0;border-radius:4px;background:var(--olive);color:#fff;font:700 13px Arial,sans-serif;cursor:pointer}button:hover{background:#4f5c36}button:disabled{opacity:.75;cursor:wait}
 		.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}.metric{padding:18px 20px;background:var(--paper);border:1px solid var(--line);border-radius:12px}.metric strong{display:block;font-size:1.8rem}.metric span{color:var(--muted);font-size:.88rem}.metric.accent{border-top:4px solid var(--gold)}
@@ -19,6 +20,7 @@
 		.search-box{width:100%;padding:13px 15px;margin:0 0 16px;border:1px solid var(--line);border-radius:4px;background:#fffdf8;color:var(--ink);font:15px Arial,sans-serif}.search-box:focus{outline:2px solid rgba(111,36,50,.2);border-color:var(--wine)}.search-empty{display:none;padding:28px;text-align:center;color:var(--muted);font:14px Arial,sans-serif}
 		.search-controls{display:grid;grid-template-columns:1fr 220px;gap:10px;margin-bottom:16px}.status-filter{padding:13px 15px;border:1px solid var(--line);border-radius:4px;background:#fffdf8;color:var(--ink);font:15px Arial,sans-serif}
 		@media(max-width:780px){.topbar{display:block}.download{margin-top:20px}.upload{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.actions{display:block}.exports{margin-top:12px}.check{height:auto}}
+		@media(max-width:780px){.scanner{grid-template-columns:1fr}}
 		@media(max-width:430px){.metrics{grid-template-columns:1fr}.shell{padding:24px 13px 40px}.brand-logo{width:92px;height:66px}.wine-logo{width:56px;height:66px}}
 	</style>
 	<div class="shell">
@@ -37,6 +39,11 @@
 			</form>
 		</section>
 
+		<section class="panel">
+			<div class="panel-heading"><div><h2>Quét QR điểm danh</h2><p class="hint">Chỉ admin dùng camera này để xác nhận khách đã đến. Không cần kiểm tra vị trí.</p></div><button id="start-scanner" class="scan-button" type="button">Mở camera</button></div>
+			<div class="scanner"><div id="qr-reader" class="reader"></div><div id="scan-result" class="scan-result"><strong>Camera đang tắt</strong><span>Nhấn “Mở camera”, sau đó hướng camera vào QR của khách.</span></div></div>
+		</section>
+
 		{% if profiles %}
 			{% set checked_in = profiles.values()|selectattr('checkin_at')|list|length %}
 			<section class="metrics"><div class="metric"><strong>{{ profiles|length }}</strong><span>Tổng khách</span></div><div class="metric accent"><strong>{{ checked_in }}</strong><span>Đã check-in</span></div><div class="metric"><strong>{{ profiles|length - checked_in }}</strong><span>Chưa check-in</span></div></section>
@@ -49,7 +56,35 @@
 			<section class="panel empty"><strong>Chưa có dữ liệu khách</strong><p>Upload file Excel để tạo danh sách QR đầu tiên.</p></section>
 		{% endif %}
 	</div>
+	<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 	<script>
+		const scannerButton = document.getElementById('start-scanner');
+		const scanResult = document.getElementById('scan-result');
+		let qrScanner;
+		function showScanResult(title, message) { scanResult.innerHTML = `<strong>${title}</strong><span>${message}</span>`; }
+		async function submitScannedQr(qrData) {
+			if (qrScanner) await qrScanner.stop().catch(() => {});
+			scannerButton.disabled = true;
+			showScanResult('Đang xác nhận...', 'Đang cập nhật trạng thái khách.');
+			const body = new URLSearchParams({qr_data: qrData});
+			try {
+				const response = await fetch('{{ url_for("admin_checkin") }}', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body});
+				const data = await response.json();
+				if (!response.ok) throw new Error(data.message || 'Không thể xác nhận QR.');
+				showScanResult(data.already_checked_in ? 'Khách đã check-in' : 'Check-in thành công', data.name);
+				setTimeout(() => window.location.reload(), 1200);
+			} catch (error) { scannerButton.disabled = false; showScanResult('Không thể check-in', error.message); }
+		}
+		scannerButton.addEventListener('click', async () => {
+			if (typeof Html5Qrcode === 'undefined') { showScanResult('Không tải được trình quét', 'Kiểm tra kết nối mạng rồi thử lại.'); return; }
+			scannerButton.disabled = true;
+			showScanResult('Đang mở camera...', 'Hãy cấp quyền camera cho trình duyệt.');
+			qrScanner = new Html5Qrcode('qr-reader');
+			try {
+				await qrScanner.start({facingMode: 'environment'}, {fps: 10, qrbox: {width: 240, height: 240}}, submitScannedQr, () => {});
+				showScanResult('Sẵn sàng quét', 'Đưa QR của khách vào khung camera.');
+			} catch (error) { scannerButton.disabled = false; showScanResult('Không mở được camera', 'Hãy dùng HTTPS hoặc localhost và cấp quyền camera.'); }
+		});
 		const searchInput = document.getElementById('guest-search');
 		const guestCards = [...document.querySelectorAll('.guest-card')];
 		const emptyMessage = document.getElementById('search-empty');

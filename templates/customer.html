@@ -17,10 +17,11 @@
       {% if admin_preview %}<p class="preview">Chế độ xem admin · Không ghi nhận check-in</p>{% endif %}<h1>Thân mời {{ profile.name }}</h1>
       <p class="code">Mã khách hàng: {{ profile.fields.get('Mã KH') or profile.fields.get('Mã khách hàng') or 'Chưa có' }}</p>
       <div class="checkin">
-        {% if profile.get('checkin_at') %}<p class="done">Đã check-in thành công</p><small class="time">Thời gian: {{ profile.checkin_at }}</small>{% elif admin_preview %}<p>Đây là trang xem thông tin, chưa thực hiện check-in.</p>{% else %}<p>Vui lòng bấm nút để xác nhận tham dự.</p><form method="post" action="{{ url_for('checkin', customer_id=request.view_args.customer_id) }}"><button type="submit">Check-in điểm danh</button></form>{% endif %}
+        {% if profile.get('checkin_at') %}<p class="done">Đã check-in thành công</p><small class="time">Thời gian: {{ profile.checkin_at }}</small>{% elif admin_preview %}<p>Đây là trang xem thông tin, chưa thực hiện check-in.</p>{% else %}<p class="done">Vui lòng xuất trình mã QR này cho admin hoặc nhân viên sự kiện để check-in.</p>{% endif %}
       </div>
       <dl>{% for field, value in profile.fields.items() %}<dt>{{ field }}</dt><dd>{{ value or "Chưa cập nhật" }}</dd>{% endfor %}</dl>
     </div>
   </main>
+
 </body>
 </html>
